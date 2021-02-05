@@ -4,7 +4,7 @@ This project demonstrates how to use NVIDIA FleX for cloth simulation in a Touch
 
 ## Download NVIDIA FleX
 
-Download FleX 1.2 (https://developer.nvidia.com/flex). Then create a new environment variables called `NvFlexDir` that holds the path to `flex` directory.
+Download FleX 1.2 (https://developer.nvidia.com/flex). Then create a new environment variable called `NvFlexDir` that holds the path to `/flex` directory.
 
 ## 3D Models
 
@@ -12,6 +12,6 @@ Dali 3D model (place fbx in root!): https://sketchfab.com/3d-models/dalithe-pers
 Inflatable 3D model: https://www.turbosquid.com/3d-models/unity-decor-model-1360123
 Cloak 3D model: https://www.turbosquid.com/3d-models/free-cloak-cape-robe-3d-model/299477
 
-![](dali_gif.gif)
-![](balloon_gif.gif)
-![](cloak_bmp.bmp)
+![](img/dali_gif.gif)
+![](img/balloon_gif.gif)
+![](img/cloak_bmp.bmp)
