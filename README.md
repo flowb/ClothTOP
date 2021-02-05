@@ -8,10 +8,16 @@ Features:
 - Spheres, boxes and planes collisions.
 - Many controlable parameters like Wind, Gravity, Adherence and Stiffness!
 
+## Demo Previews
+
+![](img/dali_gif.gif)
+![](img/balloon_gif.gif)
+![](img/cloak_bmp.bmp)
+
 Demos:
 - **ClothTOP_dali.toe** shows complex triangle mesh collision with multiple cloth bodies.
-- **ClothTOP_inflatable.toe** show inflatable body with custom PBR material shaders.
-- **ClothTOP_cloak.toe** show cloth body with animated anchor points.
+- **ClothTOP_inflatable.toe** shows an inflatable body with custom PBR material shaders.
+- **ClothTOP_cloak.toe** shows a cloth body with animated anchor points.
 
 ## Download NVIDIA FleX
 
@@ -31,12 +37,6 @@ TouchDesigner 2020.28110+ supported (tested on Windows 10).
 ## References
 
 - FlexCHOP from Vincent Houzé provided a starting point for this project.
-
-## Demo Previews
-
-![](img/dali_gif.gif)
-![](img/balloon_gif.gif)
-![](img/cloak_bmp.bmp)
 
 ## Known Issues
 - Moving anchors too fast can cause crashes. The solver may not converge for extreme deltas.
