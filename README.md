@@ -19,26 +19,27 @@ Demos:
 - **ClothTOP_inflatable.toe** shows an inflatable body with dynamic pressure.
 - **ClothTOP_cloak.toe** shows a cloth body with animated anchor points.
 
-## Download NVIDIA FleX
+## Install NVIDIA FleX
 
-Download [FleX 1.2](https://github.com/NVIDIAGameWorks/FleX) (get access [here](https://developer.nvidia.com/gameworks-source-github)). Then create a new environment variable called `NvFlexDir` that holds the path to `/flex`.
+- Download [FleX 1.2](https://github.com/NVIDIAGameWorks/FleX) (get access [here](https://developer.nvidia.com/gameworks-source-github)).
+- Create a new environment variable called `NvFlexDir` that holds the path to the `/flex` folder you unpacked.
 
 ## Compilation
 
 - Install the [CUDA SDK](https://developer.nvidia.com/Cuda-downloads) you want to use. <br>
 - Generate the Visual Studio project using [CMake](https://cmake.org/download/). <br>
 - Building will automatically copy the .dll to the Plugins folder. If instead you are using the release, just create the Plugins folder yourself and place the .dll there. <br>
-[TouchDesigner](https://derivative.ca/download) 2020.28110+ supported (tested on Windows 10).
+- [TouchDesigner](https://derivative.ca/download) 2020.28110+ supported (tested on Windows 10).
 
 ## 3D Models
 
-[Dali](https://sketchfab.com/3d-models/dalithe-persistence-of-memory-ab3e99facbdb4d9d8661d3f07815638e) 3D model (download and place the fbx next to .toe file) <br>
-[Inflatable](https://www.turbosquid.com/3d-models/unity-decor-model-1360123) 3D model <br>
-[Cloak](https://www.turbosquid.com/3d-models/free-cloak-cape-robe-3d-model/299477) 3D model <br>
+- [Dali](https://sketchfab.com/3d-models/dalithe-persistence-of-memory-ab3e99facbdb4d9d8661d3f07815638e) 3D model (download and place the .fbx next to ClothTOP_dali.toe) <br>
+- [Inflatable](https://www.turbosquid.com/3d-models/unity-decor-model-1360123) 3D model (already in ClothTOP_inflatable.toe) <br>
+- [Cloak](https://www.turbosquid.com/3d-models/free-cloak-cape-robe-3d-model/299477) 3D model (already in ClothTOP_cloak.toe)<br>
 
 ## References
 
-- FlexCHOP from Vincent Houzé provided a starting point for this project.
+- The FlexCHOP by Vincent Houzé provided a starting point for this project.
 
 ## Known Issues
 - Moving anchors too fast can cause crashes with the solver not converging for extreme deltas.
