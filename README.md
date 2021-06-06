@@ -11,11 +11,11 @@ Features:
 
 ## Samples
 **ClothTOP_dali.toe**: complex triangle mesh collision with multiple cloth bodies.
-<img src="img/dali_gif.gif" width="700"><br>
+<img src="img/dali_gif.gif" width="640"><br>
 **ClothTOP_inflatable.toe**: inflatable body with dynamic pressure.
-<img src="img/ginger_gif.gif" width="700"><br>
+<img src="img/ginger_gif.gif" width="640"><br>
 **ClothTOP_cloak.toe**: cloth body with animated anchor points.
-<img src="img/cloak_gif.gif" width="700"><br>
+<img src="img/cloak_gif.gif" width="640"><br>
 
 ## Install NVIDIA FleX
 
@@ -32,7 +32,6 @@ Features:
 ## Assets
 
 - [Dali](https://sketchfab.com/3d-models/dalithe-persistence-of-memory-ab3e99facbdb4d9d8661d3f07815638e) 3D model (download and place the .fbx next to ClothTOP_dali.toe) <br>
-- [Inflatable](https://www.turbosquid.com/3d-models/unity-decor-model-1360123) 3D model (already in ClothTOP_inflatable.toe) <br>
 - [Cloak](https://www.turbosquid.com/3d-models/free-cloak-cape-robe-3d-model/299477) 3D model (already in ClothTOP_cloak.toe)<br>
 
 ## References
