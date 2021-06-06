@@ -11,11 +11,11 @@ Features:
 
 ## Samples
 **ClothTOP_dali.toe**: complex triangle mesh collision with multiple cloth bodies.
-<img src="img/dali_gif.gif" width="600"><br>
+<img src="img/dali_gif.gif" width="700"><br>
 **ClothTOP_inflatable.toe**: inflatable body with dynamic pressure.
-<img src="img/ginger_gif.gif" width="600"><br>
+<img src="img/ginger_gif.gif" width="700"><br>
 **ClothTOP_cloak.toe**: cloth body with animated anchor points.
-<img src="img/cloak_gif.gif" width="600"><br>
+<img src="img/cloak_gif.gif" width="700"><br>
 
 ## Install NVIDIA FleX
 
