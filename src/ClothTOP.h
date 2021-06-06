@@ -40,28 +40,16 @@ public:
 	virtual void		setupParameters(OP_ParameterManager* manager, void* reserved1) override;
 	virtual void		pulsePressed(const char* name, void* reserved1) override;
 
-	// FlexSystem members
-	void updateParams(const OP_Inputs* inputs);
-	void initTriangleMesh(const OP_Inputs* inputs);
-	void initClothMesh(const OP_Inputs* inputs);
-	void updateTriangleMesh(const OP_Inputs* inputs);
-	void updatePlanes(const OP_Inputs* inputs);
-	void updateSpheresCols(const OP_Inputs* inputs);
-	void updateBoxesCols(const OP_Inputs* inputs);
-	void updateCloths(const OP_Inputs* inputs);
-
-	float	maxVel;
+	// NVIDIA Flex
 	int		activeCount;
 	int		maxParticles;
 	int		activeIndicesSize;
 	int		inactiveIndicesSize;
 	float	timer;
-	int		numPos;
-	int		numQuads;
-	int		numFaces;
 
 	FlexSystem* FlexSys;
 
+	// Plugin parameters
 	void setupParamsCustom(OP_ParameterManager* manager);
 	void setupParamsSolver(OP_ParameterManager* manager);
 	void setupParamsParts(OP_ParameterManager* manager);
@@ -75,7 +63,7 @@ public:
 	cudaArray* cuArray_outColorBuffer2;
 
 private:
-	const OP_NodeInfo		*myNodeInfo;
-	int						 myExecuteCount;
+	const OP_NodeInfo *myNodeInfo;
+	int	myExecuteCount;
 	const char* myError;
 };

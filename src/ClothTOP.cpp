@@ -30,7 +30,7 @@ extern "C"
 		info->customOPInfo.opIcon->setString("CLT");
 
 		// Information about the author of this OP
-		info->customOPInfo.authorName->setString("Vinícius Ginja");
+		info->customOPInfo.authorName->setString("Vinicius Ginja");
 		info->customOPInfo.authorEmail->setString("https://github.com/vininja");
 
 		// This TOP works with 0 inputs
@@ -38,34 +38,35 @@ extern "C"
 		info->customOPInfo.maxInputs = 0;
 	}
 
-DLLEXPORT
-TOP_CPlusPlusBase*
-CreateTOPInstance(const OP_NodeInfo* info, TOP_Context* context)
-{
-	return new ClothTOP(info, context);
-}
+	DLLEXPORT
+	TOP_CPlusPlusBase*
+	CreateTOPInstance(const OP_NodeInfo* info, TOP_Context* context)
+	{
+		return new ClothTOP(info, context);
+	}
 
-DLLEXPORT
-void
-DestroyTOPInstance(TOP_CPlusPlusBase* instance, TOP_Context* context)
-{
-	context->beginGLCommands();
-	delete (ClothTOP*)instance;
-	context->endGLCommands();
-}
-
+	DLLEXPORT
+	void
+	DestroyTOPInstance(TOP_CPlusPlusBase* instance, TOP_Context* context)
+	{
+		context->beginGLCommands();
+		delete (ClothTOP*)instance;
+		context->endGLCommands();
+	}
 };
 
 ClothTOP::ClothTOP(const OP_NodeInfo* info, TOP_Context* context)
-	: myNodeInfo(info), myExecuteCount(0), myError(nullptr)
+	: myNodeInfo(info), myExecuteCount(0), myError(nullptr),
+	activeCount(0), cuArray_outColorBuffer1(nullptr), cuArray_outColorBuffer2(nullptr),
+	cuGlResource_outColorBuffer1(nullptr), cuGlResource_outColorBuffer2(nullptr),
+	timer(0.0f)
 {
 	myExecuteCount = 0;
 
 	std::cout << "Init FlexSystem." << std::endl;
-	FlexSys = new FlexSystem();
+	FlexSys = &FlexSys->getInstance();
 	FlexSys->initSystem();
 
-	maxVel = 1;
 	maxParticles = 0;
 	activeIndicesSize = 0;
 	inactiveIndicesSize = 0;
@@ -73,7 +74,7 @@ ClothTOP::ClothTOP(const OP_NodeInfo* info, TOP_Context* context)
 
 ClothTOP::~ClothTOP()
 {
-	delete FlexSys;
+	
 }
 
 void
@@ -87,307 +88,6 @@ bool
 ClothTOP::getOutputFormat(TOP_OutputFormat* format, const OP_Inputs* inputs, void* reserved1)
 {
 	return false;
-}
-
-void ClothTOP::updateParams(const OP_Inputs* inputs) {
-
-	FlexSys->g_params.maxSpeed				= inputs->getParDouble("Maxspeed");
-	FlexSys->g_numSubsteps					= inputs->getParInt("Numsubsteps");
-	FlexSys->g_params.numIterations			= inputs->getParInt("Numiterations");
-
-	FlexSys->g_dt = 1.0 / inputs->getParDouble("Fps");
-	maxVel = 0.5f * FlexSys->g_params.radius * FlexSys->g_numSubsteps / FlexSys->g_dt;
-
-	double gravity[3];
-	inputs->getParDouble3("Gravity", gravity[0], gravity[1], gravity[2]);
-
-	FlexSys->g_params.gravity[0] = gravity[0];
-	FlexSys->g_params.gravity[1] = gravity[1];
-	FlexSys->g_params.gravity[2] = gravity[2];
-
-	double wind[3];
-	inputs->getParDouble3("Wind", wind[0], wind[1], wind[2]);
-
-	FlexSys->g_params.wind[0] = wind[0];
-	FlexSys->g_params.wind[1] = wind[1];
-	FlexSys->g_params.wind[2] = wind[2];
-
-	FlexSys->g_params.drag					= inputs->getParDouble("Dragcloth");
-	FlexSys->g_params.lift					= inputs->getParDouble("Lift");
-
-	FlexSys->g_params.dynamicFriction		= inputs->getParDouble("Dynamicfriction");
-	FlexSys->g_params.restitution			= inputs->getParDouble("Restitution");
-	FlexSys->g_params.adhesion				= inputs->getParDouble("Adhesion");
-	FlexSys->g_params.dissipation			= inputs->getParDouble("Dissipation");
-
-	FlexSys->g_params.cohesion				= inputs->getParDouble("Cohesion");
-	FlexSys->g_params.surfaceTension		= inputs->getParDouble("Surfacetension");
-	FlexSys->g_params.viscosity				= inputs->getParDouble("Viscosity");
-	FlexSys->g_params.vorticityConfinement	= inputs->getParDouble("Vorticityconfinement");
-
-	FlexSys->g_params.damping				= inputs->getParDouble("Damping");
-
-
-	FlexSys->g_params.radius				= inputs->getParDouble("Radius");
-	FlexSys->maxParticles					= inputs->getParInt("Maxparticles");
-	FlexSys->g_maxDiffuseParticles			= inputs->getParInt("Maxdiffuseparticles");
-}
-
-void ClothTOP::updateTriangleMesh(const OP_Inputs* inputs) {
-	const OP_SOPInput* sopInput = inputs->getParSOP("Trianglespolysop");
-	if (FlexSys->deformingMesh && sopInput && sopInput->getNumPrimitives() > 0 && FlexSys->g_triangleCollisionMesh->GetNumVertices() == sopInput->getNumPoints()) {
-
-		Point3 minExt(FLT_MAX);
-		Point3 maxExt(-FLT_MAX);
-
-		for (int i = 0; i < sopInput->getNumPoints(); i++) {
-			Position curPos = sopInput->getPointPositions()[i];
-			FlexSys->g_triangleCollisionMesh->m_positions[i] = Vec4(curPos.x, curPos.y, curPos.z, 0.0);
-
-			const Point3& a = Point3(curPos.x, curPos.y, curPos.z);
-
-			minExt = Min(a, minExt);
-			maxExt = Max(a, maxExt);
-		}
-
-		FlexSys->g_triangleCollisionMesh->minExtents = Vector3(minExt);
-		FlexSys->g_triangleCollisionMesh->maxExtents = Vector3(maxExt);
-
-		FlexSys->UpdateTriangleMesh(FlexSys->g_triangleCollisionMesh, FlexSys->triangleCollisionMeshId);
-	}
-}
-
-void ClothTOP::initTriangleMesh(const OP_Inputs* inputs) {
-	const OP_SOPInput* sopInput = inputs->getParSOP("Trianglespolysop");
-
-	if (sopInput && sopInput->getNumPrimitives() > 0 ) {
-
-		if (FlexSys->g_triangleCollisionMesh)
-			delete FlexSys->g_triangleCollisionMesh;
-
-		FlexSys->g_triangleCollisionMesh = new VMesh();
-
-		FlexSys->deformingMesh = inputs->getParInt("Deformingmesh");
-
-		Point3 minExt(FLT_MAX);
-		Point3 maxExt(-FLT_MAX);
-
-		for (int i = 0; i < sopInput->getNumPoints(); i++) {
-			Position curPos = sopInput->getPointPositions()[i];
-			FlexSys->g_triangleCollisionMesh->m_positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 0.0));
-
-			const Point3& a = Point3(curPos.x, curPos.y, curPos.z);
-
-			minExt = Min(a, minExt);
-			maxExt = Max(a, maxExt);
-
-		}
-
-		FlexSys->g_triangleCollisionMesh->minExtents = Vector3(minExt);
-		FlexSys->g_triangleCollisionMesh->maxExtents = Vector3(maxExt);
-
-
-		for (int i = 0; i < sopInput->getNumPrimitives(); i++) {
-			SOP_PrimitiveInfo curPrim = sopInput->getPrimitive(i);
-			FlexSys->g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[2]);
-			FlexSys->g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[1]);
-			FlexSys->g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[0]);
-
-		}
-
-		double meshTrans[3];
-		inputs->getParDouble3("Meshtranslation", meshTrans[0], meshTrans[1], meshTrans[2]);
-
-		double meshRot[3];
-		inputs->getParDouble3("Meshrotation", meshRot[0], meshRot[1], meshRot[2]);
-
-		FlexSys->curMeshTrans = Vec3(meshTrans[0], meshTrans[1], meshTrans[2]);
-		Vec3 rot = Vec3(meshRot[0], meshRot[1], meshRot[2]);
-
-		Quat qx = QuatFromAxisAngle(Vec3(1, 0, 0), DegToRad(rot.x));
-		Quat qy = QuatFromAxisAngle(Vec3(0, 1, 0), DegToRad(rot.y));
-		Quat qz = QuatFromAxisAngle(Vec3(0, 0, 1), DegToRad(rot.z));
-
-		FlexSys->curMeshRot = qz * qy * qx;
-
-		FlexSys->previousMeshTrans = FlexSys->curMeshTrans;
-		FlexSys->previousMeshRot = FlexSys->curMeshRot;
-	}
-}
-
-void ClothTOP::initClothMesh(const OP_Inputs* inputs) {
-	const OP_SOPInput* sopInput = inputs->getParSOP("Flexcloth0");
-
-	if (sopInput && sopInput->getNumPrimitives() > 0) 
-	{
-		std::vector<Vec4> m_positions;
-		std::vector<int> m_indices;
-		const Vector* norms;
-		const TexCoord* textures = nullptr;
-		int32_t numTextures = 0;
-
-		bool exists = (FlexSys->clothMesh0 != nullptr);
-
-		if (FlexSys->clothMesh0)
-		{
-			delete FlexSys->clothMesh0;
-		}
-
-		if (sopInput->hasNormals())
-		{
-			norms = sopInput->getNormals()->normals;
-		}
-		
-		if (sopInput->getTextures()->numTextureLayers)
-		{
-			textures = sopInput->getTextures()->textures;
-			numTextures = sopInput->getTextures()->numTextureLayers;
-		}
-
-		for (int i = 0; i < sopInput->getNumPoints(); i++) {
-			Position curPos = sopInput->getPointPositions()[i];
-
-			m_positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 0.0));
-
-			FlexSys->g_buffers->positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 1.0f));
-			FlexSys->g_buffers->velocities.push_back(Vec3(0.0f, 0.0f, 0.0f));
-			FlexSys->g_buffers->phases.push_back(NvFlexMakePhase(0, eNvFlexPhaseSelfCollide | eNvFlexPhaseSelfCollideFilter));
-			if(norms) FlexSys->g_buffers->normals.push_back(Vec4(norms[i].x, norms[i].y, norms[i].z, 0.0f));
-			if(textures) FlexSys->g_buffers->uvs.push_back(Vec3(textures[i].u, textures[i].v, textures[i].w));
-		}
-
-
-		int baseIndex = 0; 
-
-		for (int i = 0; i < sopInput->getNumPrimitives(); i++) {
-			SOP_PrimitiveInfo curPrim = sopInput->getPrimitive(i);
-			m_indices.push_back(curPrim.pointIndices[2]);
-			m_indices.push_back(curPrim.pointIndices[1]);
-			m_indices.push_back(curPrim.pointIndices[0]);
-		}
-
-		int triOffset = FlexSys->g_buffers->triangles.size();
-		int triCount = m_indices.size() / 3;
-
-		FlexSys->g_buffers->triangles.assign((int*)&m_indices[0], m_indices.size());
-
-		float stretchStiffness = inputs->getParDouble("Strechcloth");
-		float bendStiffness = inputs->getParDouble("Bendcloth");
-
-		FlexSys->clothMesh0 = new ClothMesh(&m_positions[0], m_positions.size(), &m_indices[0], m_indices.size(), stretchStiffness, bendStiffness, true);
-
-		const int numSprings = int(FlexSys->clothMesh0->mConstraintCoefficients.size());
-
-		FlexSys->g_buffers->springIndices.resize(numSprings * 2);
-		FlexSys->g_buffers->springLengths.resize(numSprings);
-		FlexSys->g_buffers->springStiffness.resize(numSprings);
-
-		for (int i = 0; i < numSprings; ++i)
-		{
-			FlexSys->g_buffers->springIndices[i * 2 + 0] = FlexSys->clothMesh0->mConstraintIndices[i * 2 + 0];
-			FlexSys->g_buffers->springIndices[i * 2 + 1] = FlexSys->clothMesh0->mConstraintIndices[i * 2 + 1];
-			FlexSys->g_buffers->springLengths[i] = FlexSys->clothMesh0->mConstraintRestLengths[i];
-			FlexSys->g_buffers->springStiffness[i] = FlexSys->clothMesh0->mConstraintCoefficients[i];
-		}
-
-		float pressure = inputs->getParDouble("Pressure");
-
-		if (pressure > 0.0f)
-		{
-			FlexSys->g_buffers->inflatableTriOffsets.push_back(triOffset / 3);
-			FlexSys->g_buffers->inflatableTriCounts.push_back(triCount);
-			FlexSys->g_buffers->inflatablePressures.push_back(pressure);
-
-			FlexSys->g_buffers->inflatableVolumes.push_back(FlexSys->clothMesh0->mRestVolume);
-			FlexSys->g_buffers->inflatableCoefficients.push_back(FlexSys->clothMesh0->mConstraintScale);
-		}
-
-	}
-}
-
-void ClothTOP::updatePlanes(const OP_Inputs* inputs) 
-{
-
-	const OP_CHOPInput* colPlanesInput = inputs->getParCHOP("Colplaneschop");
-
-	if (colPlanesInput) {
-		if (colPlanesInput->numChannels == 4) 
-		{
-			int nPlanes = colPlanesInput->numSamples;
-			FlexSys->g_params.numPlanes = nPlanes;
-
-			for (int i = 0; i < nPlanes; i++) {
-				(Vec4&)FlexSys->g_params.planes[i] = Vec4(colPlanesInput->getChannelData(0)[i],
-					colPlanesInput->getChannelData(1)[i],
-					colPlanesInput->getChannelData(2)[i],
-					colPlanesInput->getChannelData(3)[i]);
-			}
-		}
-	}
-}
-
-void ClothTOP::updateSpheresCols(const OP_Inputs* inputs) 
-{
-	const OP_CHOPInput* spheresInput = inputs->getParCHOP("Colsphereschop");
-	if (spheresInput && spheresInput->numChannels == 4) 
-	{
-		for (int i = 0; i < spheresInput->numSamples; i++) 
-		{
-			Vec3 spherePos = Vec3(spheresInput->getChannelData(0)[i],
-				spheresInput->getChannelData(1)[i],
-				spheresInput->getChannelData(2)[i]);
-
-			float sphereRadius = spheresInput->getChannelData(3)[i];
-
-			FlexSys->AddSphere(sphereRadius, spherePos, Quat());
-		}
-	}
-}
-
-void ClothTOP::updateBoxesCols(const OP_Inputs* inputs) 
-{
-	const OP_CHOPInput* boxesInput = inputs->getParCHOP("Colboxeschop");
-
-	if (boxesInput && boxesInput->numChannels == 9) 
-	{
-		for (int i = 0; i < boxesInput->numSamples; i++) 
-		{
-			Vec3 boxPos = Vec3(boxesInput->getChannelData(0)[i],
-				boxesInput->getChannelData(1)[i],
-				boxesInput->getChannelData(2)[i]);
-
-			Vec3 boxSize = Vec3(boxesInput->getChannelData(3)[i],
-				boxesInput->getChannelData(4)[i],
-				boxesInput->getChannelData(5)[i]);
-
-			Vec3 boxRot = Vec3(boxesInput->getChannelData(6)[i],
-				boxesInput->getChannelData(7)[i],
-				boxesInput->getChannelData(8)[i]);
-
-			Quat qx = QuatFromAxisAngle(Vec3(1, 0, 0), DegToRad(boxRot.x));
-			Quat qy = QuatFromAxisAngle(Vec3(0, 1, 0), DegToRad(boxRot.y));
-			Quat qz = QuatFromAxisAngle(Vec3(0, 0, 1), DegToRad(boxRot.z));
-
-			FlexSys->AddBox(boxSize, boxPos, qz * qy * qx);
-		}
-	}
-}
-
-void ClothTOP::updateCloths(const OP_Inputs* inputs) 
-{
-	const OP_SOPInput* sopInput = inputs->getParSOP("Anchorscloth0");
-
-	// update anchor positions
-	if (sopInput && sopInput->getNumPoints() > 0) 
-	{
-		const SOP_CustomAttribData* idx = sopInput->getCustomAttribute("idx");
-	
-		for (int i = 0; i < sopInput->getNumPoints(); i++) 
-		{
-			Position curPos = sopInput->getPointPositions()[i];
-			FlexSys->g_buffers->positions[idx->floatData[i]] = Vec4(curPos.x, curPos.y, curPos.z, 0.0f);
-		}
-	}
 }
 
 /////////////////////////////// CUDA FUNCTIONS /////////////////////////////////
@@ -410,17 +110,20 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 	{
 		std::cout << "FlexSystem: Reset scene." << std::endl;
 		FlexSys->initScene();
-		FlexSys->g_params.radius = inputs->getParDouble("Radius");
-		FlexSys->maxParticles = inputs->getParInt("Maxparticles");
+		FlexSys->initClothMesh(inputs);
+		FlexSys->initTriangleMesh(inputs);
 
-		initClothMesh(inputs);
-		initTriangleMesh(inputs);
+		// Radial force field
+		if (inputs->getParCHOP("Forceschop") &&  (FlexSys->forcefieldRadial!=nullptr))
+		{
+			delete FlexSys->forcefieldRadial;
+		}
 
 		cudaGraphicsGLRegisterImage(&cuGlResource_outColorBuffer1, outputFormat->colorBufferRB[1], GL_RENDERBUFFER, cudaGraphicsRegisterFlagsSurfaceLoadStore);
 		cudaGraphicsGLRegisterImage(&cuGlResource_outColorBuffer2, outputFormat->colorBufferRB[2], GL_RENDERBUFFER, cudaGraphicsRegisterFlagsSurfaceLoadStore);
 	} 
 
-	updateParams(inputs);
+	FlexSys->updateParams(inputs);
 	
 	if (FlexSys->g_solver) 
 	{
@@ -433,17 +136,15 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 		cudaGraphicsSubResourceGetMappedArray(&cuArray_outColorBuffer1, cuGlResource_outColorBuffer1, 0, 0);
 		cudaGraphicsSubResourceGetMappedArray(&cuArray_outColorBuffer2, cuGlResource_outColorBuffer2, 0, 0);
 
-		// cuda params
 		int nThreads = 16;
-		dim3 block(nThreads, nThreads, 1);
-
 		int width = outputFormat->width;
 		int height = outputFormat->height;
 
+		dim3 block(nThreads, nThreads, 1);
 		dim3 grid;
+
 		grid.x = width / nThreads + (!(width % nThreads) ? 0 : 1); 
 		grid.y = height / nThreads + (!(height % nThreads) ? 0 : 1);
-
 
 		void* mapped_g_buff[4] = {	FlexSys->g_buffers->positionsGpu.mappedPtr,
 									FlexSys->g_buffers->trianglesGpu.mappedPtr,
@@ -452,25 +153,27 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 
 		launch_PosNormKernel(inputs->getParInt("Outputmode"),grid, block, FlexSys->g_buffers->positionsGpu.size(), FlexSys->g_buffers->trianglesGpu.size() / 3, mapped_g_buff, cuArray_outColorBuffer1, cuArray_outColorBuffer2, outputFormat->width, outputFormat->height);
 
-		updatePlanes(inputs);
+		FlexSys->updatePlanes(inputs);
 
-		double pressure = inputs->getParDouble("Pressure");
-		if (FlexSys->g_buffers->inflatablePressures.mappedPtr != nullptr) {
-			for (int i = 0; i < int(FlexSys->g_buffers->inflatablePressures.size()); ++i) {
+		float pressure = (float)inputs->getParDouble("Pressure");
+
+		if (FlexSys->g_buffers->inflatablePressures.mappedPtr != nullptr) 
+		{
+			for (int i = 0; i < int(FlexSys->g_buffers->inflatablePressures.size()); ++i) 
+			{
 				FlexSys->g_buffers->inflatablePressures[i] = pressure;
 			}
 		}
 
-		updateCloths(inputs);
-
 		FlexSys->ClearShapes();
 
-		updateSpheresCols(inputs);
-		updateBoxesCols(inputs);
+		FlexSys->updateCloths(inputs);
+		FlexSys->updateSpheresCols(inputs);
+		FlexSys->updateBoxesCols(inputs);
 
 		if (FlexSys->g_triangleCollisionMesh) 
 		{
-			updateTriangleMesh(inputs);
+			FlexSys->updateTriangleMesh(inputs);
 
 			FlexSys->previousMeshTrans = FlexSys->curMeshTrans;
 			FlexSys->previousMeshRot = FlexSys->curMeshRot; 
@@ -481,8 +184,8 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 			double meshRot[3];
 			inputs->getParDouble3("Meshrotation", meshRot[0], meshRot[1], meshRot[2]);
 
-			FlexSys->curMeshTrans = Vec3(meshTrans[0], meshTrans[1], meshTrans[2]);
-			Vec3 rot = Vec3(meshRot[0], meshRot[1], meshRot[2]);
+			FlexSys->curMeshTrans = Vec3((float)meshTrans[0], (float)meshTrans[1], (float)meshTrans[2]);
+			Vec3 rot = Vec3((float)meshRot[0], (float)meshRot[1], (float)meshRot[2]);
 
 			Quat qx = QuatFromAxisAngle(Vec3(1, 0, 0), DegToRad(rot.x));
 			Quat qy = QuatFromAxisAngle(Vec3(0, 1, 0), DegToRad(rot.y));
@@ -490,6 +193,32 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 
 			FlexSys->curMeshRot = qz * qy * qx;
 			FlexSys->AddTriangleMesh(FlexSys->triangleCollisionMeshId, FlexSys->curMeshTrans, FlexSys->curMeshRot, FlexSys->previousMeshTrans, FlexSys->previousMeshRot, 1.0f);
+		}
+	}
+
+	// Radial force field
+	if (inputs->getParCHOP("Forceschop"))
+	{
+		const OP_CHOPInput* radialFieldInput = inputs->getParCHOP("Forceschop");
+		if (radialFieldInput->numChannels == 5)
+		{
+			FlexSys->forcefieldRadial = (NvFlexExtForceField*)malloc(radialFieldInput->numSamples * sizeof(NvFlexExtForceField));
+
+			FlexSys->nFields = radialFieldInput->numSamples;
+
+			for (int i = 0; i < radialFieldInput->numSamples; i++)
+			{
+				if (FlexSys->forcefieldRadial != nullptr)
+				{
+					FlexSys->forcefieldRadial[i].mPosition[0] = radialFieldInput->getChannelData(0)[i];
+					FlexSys->forcefieldRadial[i].mPosition[1] = radialFieldInput->getChannelData(1)[i];
+					FlexSys->forcefieldRadial[i].mPosition[2] = radialFieldInput->getChannelData(2)[i];
+					FlexSys->forcefieldRadial[i].mRadius = radialFieldInput->getChannelData(3)[i];
+					FlexSys->forcefieldRadial[i].mStrength = radialFieldInput->getChannelData(4)[i];
+					FlexSys->forcefieldRadial[i].mMode = eNvFlexExtModeForce;
+					FlexSys->forcefieldRadial[i].mLinearFalloff = true;
+				}
+			}
 		}
 	}
 
@@ -505,17 +234,16 @@ void ClothTOP::execute(TOP_OutputFormatSpecs* outputFormat,
 	}
 	else if (FlexSys->g_solver) 
 	{
-		// Tick solver
-		if (simulate)
+		if (simulate) 
+		{
 			FlexSys->update();
+		}
 
-		// Flex counters
 		activeCount = FlexSys->activeParticles;
 		maxParticles = FlexSys->maxParticles;
 		activeIndicesSize = FlexSys->g_buffers->activeIndices.size();
-		inactiveIndicesSize = FlexSys->g_inactiveIndices.size();
+		inactiveIndicesSize = (int)FlexSys->g_inactiveIndices.size();
 		
-		// Unmap GL buffers
 		cudaGraphicsUnmapResources(1, &cuGlResource_outColorBuffer1, 0);
 		cudaGraphicsUnmapResources(1, &cuGlResource_outColorBuffer2, 0);
 	}
@@ -539,25 +267,23 @@ void ClothTOP::getInfoCHOPChan(int32_t index, OP_InfoCHOPChan* chan, void* reser
 {
 	switch (index) 
 	{
-	case 0:
-		chan->name->setString("executeCount");
-		chan->value = myExecuteCount;
-		break;
+		case 0:
+			chan->name->setString("executeCount");
+			chan->value = (float)myExecuteCount;
+			break;
+		case 1:
+			chan->name->setString("flexTime");
+			chan->value = FlexSys->simLatency;
+			break;
 
-	case 1:
-		chan->name->setString("flexTime");
-		chan->value = FlexSys->simLatency;
-		break;
-
-	case 2:
-		chan->name->setString("solveVelocities");
-		chan->value = FlexSys->g_timers.solveVelocities;
-		break;
-	case 3:
-		chan->name->setString("maxVel");
-		chan->value = maxVel;
-		break;
-
+		case 2:
+			chan->name->setString("solveVelocities");
+			chan->value = FlexSys->g_timers.solveVelocities;
+			break;
+		case 3:
+			chan->name->setString("maxVel");
+			chan->value = FlexSys->g_params.maxSpeed;
+			break;
 	}
 }
 
@@ -579,37 +305,32 @@ void ClothTOP::getInfoDATEntries(int32_t index, int32_t nEntries,
 	static char tempBuffer1[4096];
 	static char tempBuffer2[4096];
 
-	switch (index) {
-
-	case 0:
-		strcpy(tempBuffer1, "maxParticles");
-		sprintf(tempBuffer2, "%d", maxParticles);
-		break;
-
-	case 1:
-		strcpy(tempBuffer1, "activeIndicesSize");
-		sprintf(tempBuffer2, "%d", activeIndicesSize);
-		break;
-
-	case 2:
-		strcpy(tempBuffer1, "inactiveIndicesSize");
-		sprintf(tempBuffer2, "%d", inactiveIndicesSize);
-		break;
-
-	case 3:
-		strcpy(tempBuffer1, "maxVel");
-		sprintf(tempBuffer2, "%f", maxVel);
-		break;
-
-	case 4:
-		strcpy(tempBuffer1, "cursor");
-		sprintf(tempBuffer2, "%d", FlexSys->cursor);
-		break;
+	switch (index) 
+	{
+		case 0:
+			strcpy(tempBuffer1, "maxParticles");
+			sprintf(tempBuffer2, "%d", maxParticles);
+			break;
+		case 1:
+			strcpy(tempBuffer1, "activeIndicesSize");
+			sprintf(tempBuffer2, "%d", activeIndicesSize);
+			break;
+		case 2:
+			strcpy(tempBuffer1, "inactiveIndicesSize");
+			sprintf(tempBuffer2, "%d", inactiveIndicesSize);
+			break;
+		case 3:
+			strcpy(tempBuffer1, "maxVel");
+			sprintf(tempBuffer2, "%f", FlexSys->g_params.maxSpeed);
+			break;
+		case 4:
+			strcpy(tempBuffer1, "cursor");
+			sprintf(tempBuffer2, "%d", FlexSys->cursor);
+			break;
 	}
 
 	entries->values[0]->setString(tempBuffer1);
 	entries->values[1]->setString(tempBuffer2);
-
 }
 
 void ClothTOP::getErrorString(OP_String* error, void* reserved1)
@@ -766,6 +487,18 @@ void ClothTOP::setupParamsSolver(OP_ParameterManager* manager) {
 		np.defaultValues[0] = 2000;
 
 		OP_ParAppendResult res = manager->appendInt(np);
+		assert(res == OP_ParAppendResult::Success);
+	}
+
+	//Forceschop
+	{
+		OP_StringParameter sp;
+
+		sp.name = "Forceschop";
+		sp.label = "Forcefields CHOP";
+		sp.page = "Solver";
+
+		OP_ParAppendResult res = manager->appendCHOP(sp);
 		assert(res == OP_ParAppendResult::Success);
 	}
 }

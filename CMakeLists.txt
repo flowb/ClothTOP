@@ -24,6 +24,10 @@ set(CMAKE_CONFIGURATION_TYPES
     CACHE STRING "" FORCE
 )
 
+#enable_language(CUDA)
+##include(CheckLanguage)
+#check_language(CUDA)
+
 ################################################################################
 # Global compiler options
 ################################################################################
@@ -160,7 +164,8 @@ find_package(CUDA)
 
 set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=compute_75,code=\"sm_75,compute_75\")
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=\"compute_50\",code=\"sm_50,compute_50\")
+#set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=\"compute_75\",code=\"sm_75,compute_75\")
 if ( CMAKE_COMPILER_IS_GNUCC )
     if(NOT "${CUDA_NVCC_FLAGS}" MATCHES "-std=c\\+\\+11" )
         list(APPEND CUDA_NVCC_FLAGS -std=c++11)
@@ -194,17 +199,6 @@ if (MSVC)
                       COMMAND ${CMAKE_COMMAND} -E copy_if_different
                       "$<TARGET_FILE:ClothTOP>"
                       ${PROJECT_SOURCE_DIR}/Plugins)
-
-    # ## Move Flex DLLs
-    # file(GLOB FLEX_DLLS ${NVFLEXDIR}/bin/win64/NvFlexDeviceRelease_x64.dll
-    #                     ${NVFLEXDIR}/bin/win64/NvFlexExtReleaseCUDA_x64.dll
-    #                     ${NVFLEXDIR}/bin/win64/NvFlexReleaseCUDA_x64.dll)
-
-    # add_custom_command(TARGET ${PROJECT_NAME}
-    #                  POST_BUILD
-    #                  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    #                  ${FLEX_DLLS}
-    #                  ${PROJECT_SOURCE_DIR}/Plugins)
 endif (MSVC)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

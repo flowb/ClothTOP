@@ -28,13 +28,11 @@ SimBuffers::SimBuffers(NvFlexLibrary* l) :
 	anisotropy1(l, 0, eNvFlexBufferDevice), anisotropy2(l, 0, eNvFlexBufferDevice), anisotropy3(l, 0, eNvFlexBufferDevice), normals(l), normalsGpu(l, 0, eNvFlexBufferDevice), smoothPositions(l, 0, eNvFlexBufferDevice),
 	diffusePositions(l), diffuseVelocities(l), diffuseCount(l), activeIndices(l),
 	shapeGeometry(l), shapePositions(l), shapeRotations(l), shapePrevPositions(l),
-	shapePrevRotations(l), shapeFlags(l), rigidOffsets(l), rigidIndices(l), rigidMeshSize(l),
-	rigidCoefficients(l), rigidPlasticThresholds(l), rigidPlasticCreeps(l), rigidRotations(l), rigidTranslations(l),
-	rigidLocalPositions(l), rigidLocalNormals(l), inflatableTriOffsets(l),
+	shapePrevRotations(l), shapeFlags(l), inflatableTriOffsets(l),
 	inflatableTriCounts(l), inflatableVolumes(l), inflatableCoefficients(l),
 	inflatablePressures(l), springIndices(l), springLengths(l),
-	springStiffness(l), triangles(l), triangleNormals(l), uvs(l), uvsGpu(l,0, eNvFlexBufferDevice),
-	contactPlanes(l), contactVelocities(l), contactIndices(l), contactCounts(l), trianglesGpu(l, 0, eNvFlexBufferDevice), triangleNormalsGpu(l, 0, eNvFlexBufferDevice)/*, fieldCollider(l, 0, eNvFlexBufferDevice)*/
+	springStiffness(l), triangles(l), triangleNormals(l), uvs(l), uvsGpu(l, 0, eNvFlexBufferDevice),
+	contactPlanes(l), contactVelocities(l), contactIndices(l), contactCounts(l), trianglesGpu(l, 0, eNvFlexBufferDevice), triangleNormalsGpu(l, 0, eNvFlexBufferDevice)
 {
 
 }
@@ -67,18 +65,6 @@ SimBuffers::~SimBuffers()
 	shapePrevRotations.destroy();
 	shapeFlags.destroy();
 
-	// rigids
-	rigidOffsets.destroy();
-	rigidIndices.destroy();
-	rigidMeshSize.destroy();
-	rigidCoefficients.destroy();
-	rigidPlasticThresholds.destroy();
-	rigidPlasticCreeps.destroy();
-	rigidRotations.destroy();
-	rigidTranslations.destroy();
-	rigidLocalPositions.destroy();
-	rigidLocalNormals.destroy();
-
 	// springs
 	springIndices.destroy();
 	springLengths.destroy();
@@ -98,7 +84,6 @@ SimBuffers::~SimBuffers()
 	triangleNormalsGpu.destroy();
 	uvs.destroy();
 	uvsGpu.destroy();
-
 }
 
 void SimBuffers::MapBuffers() 
@@ -129,18 +114,6 @@ void SimBuffers::MapBuffers()
 	shapePrevRotations.map();
 	shapeFlags.map();
 
-    // rigids
-	rigidOffsets.map();
-	rigidIndices.map();
-	rigidMeshSize.map();
-	rigidCoefficients.map();
-	rigidPlasticThresholds.map();
-	rigidPlasticCreeps.map();
-	rigidRotations.map();
-	rigidTranslations.map();
-	rigidLocalPositions.map();
-	rigidLocalNormals.map();
-
 	springIndices.map();
 	springLengths.map();
 	springStiffness.map();
@@ -165,7 +138,6 @@ void SimBuffers::MapBuffers()
 	contactVelocities.map();
 	contactIndices.map();
 	contactCounts.map();
-
 }
 
 void SimBuffers::UnmapBuffers() 
@@ -196,18 +168,6 @@ void SimBuffers::UnmapBuffers()
 	shapePrevRotations.unmap();
 	shapeFlags.unmap();
 
-	// rigids
-	rigidOffsets.unmap();
-	rigidIndices.unmap();
-	rigidMeshSize.unmap();
-	rigidCoefficients.unmap();
-	rigidPlasticThresholds.unmap();
-	rigidPlasticCreeps.unmap();
-	rigidRotations.unmap();
-	rigidTranslations.unmap();
-	rigidLocalPositions.unmap();
-	rigidLocalNormals.unmap();
-
 	// springs
 	springIndices.unmap();
 	springLengths.unmap();
@@ -233,7 +193,6 @@ void SimBuffers::UnmapBuffers()
 	contactVelocities.unmap();
 	contactIndices.unmap();
 	contactCounts.unmap();
-
 }
 
 void SimBuffers::InitBuffers() 
@@ -251,18 +210,6 @@ void SimBuffers::InitBuffers()
 	normals.resize(0);
 	normalsGpu.resize(0);
 
-	// rigids
-	rigidOffsets.resize(0);
-	rigidIndices.resize(0);
-	rigidMeshSize.resize(0);
-	rigidRotations.resize(0);
-	rigidTranslations.resize(0);
-	rigidCoefficients.resize(0);
-	rigidPlasticThresholds.resize(0);
-	rigidPlasticCreeps.resize(0);
-	rigidLocalPositions.resize(0);
-	rigidLocalNormals.resize(0);
-	
 	// springs
 	springIndices.resize(0);
 	springLengths.resize(0);
@@ -302,11 +249,6 @@ FlexSystem::FlexSystem()
 
 	g_solver = NULL;
 
-	time1 = 0;
-	time2 = 0;
-	time3 = 0;
-	time4 = 0;
-
 	memset(&g_timers, 0, sizeof(g_timers));
 
 	cursor = 0;
@@ -320,14 +262,10 @@ FlexSystem::~FlexSystem()
 {
 	if (g_solver)
 	{
-		if(g_buffers)
+		if (g_buffers) 
+		{
 			delete g_buffers;
-
-		if (clothMesh0)
-			delete clothMesh0;
-
-		if (g_triangleCollisionMesh)
-			delete g_triangleCollisionMesh;
+		}
 		
 		NvFlexDestroySolver(g_solver);
 		NvFlexShutdown(g_flexLib);
@@ -338,13 +276,17 @@ FlexSystem::~FlexSystem()
 
 void FlexSystem::getSimTimers() 
 {
-	if (g_profile) {
+	if (g_profile) 
+	{
 		memset(&g_timers, 0, sizeof(g_timers));
 		NvFlexGetTimers(g_solver, &g_timers);
 		simLatency = g_timers.total;
 	}
-	else
+	else 
+	{
 		simLatency = NvFlexGetDeviceLatency(g_solver, &g_GpuTimers.computeBegin, &g_GpuTimers.computeEnd, &g_GpuTimers.computeFreq);
+	}
+		
 }
 
 void FlexSystem::initSystem() 
@@ -430,39 +372,27 @@ void FlexSystem::initParams()
 
 	g_params.numPlanes = 0;
 
-	callback = NULL;
+	callback = nullptr;
 }
 
 void FlexSystem::initScene() 
 {
 	RandInit();
-
 	cursor = 0;
 
 	if (g_solver)
 	{
-
-		if (g_buffers)
+		if (g_buffers) 
+		{
 			delete g_buffers;
+		}
 
 		NvFlexDestroySolver(g_solver);
 		g_solver = nullptr;
-
-		/*	if (g_triangleCollisionMesh) {
-				delete g_triangleCollisionMesh;
-				g_triangleCollisionMesh = nullptr;
-			}
-
-			if (clothMesh0) {
-				delete clothMesh0;
-				clothMesh0 = nullptr;
-			}*/
 	}
 
-	// alloc buffers
 	g_buffers = new SimBuffers(g_flexLib);
 
-	// map during initialization
 	g_buffers->MapBuffers();
 	g_buffers->InitBuffers();
 
@@ -472,90 +402,87 @@ void FlexSystem::initScene()
 	initParams();
 
 	g_numSubsteps = 2;
-
 	g_sceneLower = FLT_MAX;
 	g_sceneUpper = -FLT_MAX;
 
-	// initialize solver desc
 	NvFlexSetSolverDescDefaults(&g_solverDesc);
-
 	ClearShapes();
 
 	maxParticles = 64;
 	g_maxDiffuseParticles = 0;
 	g_maxNeighborsPerParticle = 96;
 	g_maxContactsPerParticle = 6;
-
 }
 
 void FlexSystem::postInitScene()
 {
 	g_solverDesc.featureMode = eNvFlexFeatureModeSimpleSolids;// eNvFlexFeatureModeSimpleFluids;
+	g_params.fluidRestDistance = g_params.radius * 0.65f;
 
-	g_params.fluidRestDistance = g_params.radius*0.65f;
-
-	if (g_params.solidRestDistance == 0.0f)
+	if (g_params.solidRestDistance == 0.0f) 
+	{
 		g_params.solidRestDistance = g_params.radius;
+	}
 
-	// if fluid present then we assume solid particles have the same radius
-	if (g_params.fluidRestDistance > 0.0f)
+	if (g_params.fluidRestDistance > 0.0f) 
+	{
 		g_params.solidRestDistance = g_params.fluidRestDistance;
+	}
 
-	// set collision distance automatically based on rest distance if not alraedy set
-	if (g_params.collisionDistance == 0.0f)
-		g_params.collisionDistance = Max(g_params.solidRestDistance, g_params.fluidRestDistance)*0.5f;
+	if (g_params.collisionDistance == 0.0f) 
+	{
+		g_params.collisionDistance = Max(g_params.solidRestDistance, g_params.fluidRestDistance) * 0.5f;
+	}
 
-	// default particle friction to 10% of shape friction
-	if (g_params.particleFriction == 0.0f)
-		g_params.particleFriction = g_params.dynamicFriction*0.1f;
+	if (g_params.particleFriction == 0.0f) 
+	{
+		g_params.particleFriction = g_params.dynamicFriction * 0.1f;
+	}
 
-	// add a margin for detecting contacts between particles and shapes
-	if (g_params.shapeCollisionMargin == 0.0f)
-		g_params.shapeCollisionMargin = g_params.collisionDistance*0.5f;
+	if (g_params.shapeCollisionMargin == 0.0f) 
+	{
+		g_params.shapeCollisionMargin = g_params.collisionDistance * 0.5f;
+	}
 
 	g_maxDiffuseParticles = 5000;
 
-
 	for (int i = 0; i < nVolumeBoxes; i++) 
 	{
-		CreateCenteredParticleGrid(Point3(g_volumeBoxes[i].mPos.x, g_volumeBoxes[i].mPos.y, g_volumeBoxes[i].mPos.z), g_volumeBoxes[i].mRot, Point3(g_volumeBoxes[i].mSize.x, g_volumeBoxes[i].mSize.y, g_volumeBoxes[i].mSize.z), g_params.fluidRestDistance, Vec3(0.0f), 1, false, NvFlexMakePhase(0, eNvFlexPhaseSelfCollide | eNvFlexPhaseFluid), g_params.fluidRestDistance*0.01f);
+		CreateCenteredParticleGrid(Point3(g_volumeBoxes[i].mPos.x, g_volumeBoxes[i].mPos.y, g_volumeBoxes[i].mPos.z), g_volumeBoxes[i].mRot, Point3(g_volumeBoxes[i].mSize.x, g_volumeBoxes[i].mSize.y, g_volumeBoxes[i].mSize.z), g_params.fluidRestDistance, Vec3(0.0f), 1, false, NvFlexMakePhase(0, eNvFlexPhaseSelfCollide | eNvFlexPhaseFluid), g_params.fluidRestDistance * 0.01f);
 	}
 
 	g_params.anisotropyScale = 1.0f;
 
-	//*******CREATE TRIANGLE MESH
-
-	if (g_triangleCollisionMesh) {
+	if (g_triangleCollisionMesh) 
+	{
 		triangleCollisionMeshId = CreateTriangleMesh(g_triangleCollisionMesh);
 	}
 
 	uint32_t numParticles = g_buffers->positions.size(); //non zero if init volume boxes
 
-	//**** IF PARTICLE GRID
-
-	if (g_buffers->positions.size()) {
+	if (g_buffers->positions.size())
+	{
 		g_buffers->activeIndices.resize(numParticles);
 		for (size_t i = 0; i < g_buffers->activeIndices.size(); ++i)
+		{
 			g_buffers->activeIndices[i] = i;
+		}
 	}
-	g_inactiveIndices.resize(maxParticles - numParticles);
 
-	for (size_t i = 0; i < g_inactiveIndices.size(); ++i)
+	g_inactiveIndices.resize(size_t(maxParticles) - numParticles);
+
+	for (size_t i = 0; i < g_inactiveIndices.size(); ++i) 
+	{
 		g_inactiveIndices[i] = i + numParticles;
-
+	}
 	
-	// for fluid rendering these are the Laplacian smoothed positions
 	g_buffers->smoothPositions.resize(maxParticles);
-
 	g_buffers->normals.resize(0);
 	g_buffers->normals.resize(maxParticles);
 	g_buffers->normalsGpu.resize(0);
 	g_buffers->normalsGpu.resize(maxParticles);
-
-	// resize particle buffers to fit
 	g_buffers->positions.resize(maxParticles);
 	g_buffers->positionsGpu.resize(maxParticles);
-	//g_buffers->restPositions.resize(maxParticles);
 	g_buffers->velocities.resize(maxParticles);
 	g_buffers->phases.resize(maxParticles);
 	g_buffers->densities.resize(maxParticles);
@@ -563,12 +490,12 @@ void FlexSystem::postInitScene()
 	g_buffers->anisotropy2.resize(maxParticles);
 	g_buffers->anisotropy3.resize(maxParticles);
 
-	// diffuse
+	// Diffuse
 	g_buffers->diffusePositions.resize(g_maxDiffuseParticles);
 	g_buffers->diffuseVelocities.resize(g_maxDiffuseParticles);
 	g_buffers->diffuseCount.resize(g_maxDiffuseParticles);
 
-	// triangles
+	// Triangles
 	g_buffers->triangles.resize(maxParticles);
 	g_buffers->trianglesGpu.resize(maxParticles);
 	g_buffers->triangleNormals.resize(maxParticles);
@@ -576,19 +503,20 @@ void FlexSystem::postInitScene()
 	g_buffers->uvs.resize(maxParticles);
 	g_buffers->uvsGpu.resize(maxParticles);
 
-	// contacts
+	// Contacts
 	const int maxContactsPerParticle = 6;
 	g_buffers->contactPlanes.resize(maxParticles * maxContactsPerParticle);
 	g_buffers->contactVelocities.resize(maxParticles * maxContactsPerParticle);
 	g_buffers->contactIndices.resize(maxParticles);
 	g_buffers->contactCounts.resize(maxParticles);
 
-	// save rest positions
+	// Rest positions
 	g_buffers->restPositions.resize(g_buffers->positions.size());
-	size_t j;
-	for ( j= 0; j < g_buffers->positions.size(); ++j)
+	for (size_t j = 0; j < g_buffers->positions.size(); ++j)
+	{
 		g_buffers->restPositions[j] = g_buffers->positions[j];
-	
+	}
+
 	g_solverDesc.maxParticles = maxParticles;
 	g_solverDesc.maxDiffuseParticles = g_maxDiffuseParticles;
 	g_solverDesc.maxNeighborsPerParticle = g_maxNeighborsPerParticle;
@@ -596,33 +524,26 @@ void FlexSystem::postInitScene()
 
 	g_solver = NvFlexCreateSolver(g_flexLib, &g_solverDesc);
 
-	// ######################### WARM UP ######################################
-
 	g_buffers->UnmapBuffers();
 
-	if (g_buffers->activeIndices.size()) {
+	if (g_buffers->activeIndices.size()) 
+	{
 		NvFlexSetActive(g_solver, g_buffers->activeIndices.buffer, NULL);
 	}
-
-	if (g_buffers->positions.size()) {
+	
+	if (g_buffers->positions.size()) 
+	{
 		NvFlexSetParticles(g_solver, g_buffers->positions.buffer, NULL);
 		NvFlexSetVelocities(g_solver, g_buffers->velocities.buffer, NULL);
 		NvFlexSetPhases(g_solver, g_buffers->phases.buffer, NULL);
-
 		NvFlexSetNormals(g_solver, g_buffers->normals.buffer, NULL);
 	}
 	
-	// rigids
-	if (g_buffers->rigidOffsets.size())
+	if (g_buffers->triangles.size()) 
 	{
-		NvFlexSetRigids(g_solver, g_buffers->rigidOffsets.buffer, g_buffers->rigidIndices.buffer, g_buffers->rigidLocalPositions.buffer, g_buffers->rigidLocalNormals.buffer, g_buffers->rigidCoefficients.buffer, g_buffers->rigidPlasticThresholds.buffer, g_buffers->rigidPlasticCreeps.buffer, g_buffers->rigidRotations.buffer, g_buffers->rigidTranslations.buffer, g_buffers->rigidOffsets.size() - 1, g_buffers->rigidIndices.size());
-	}
-	
-	// triangles
-	if (g_buffers->triangles.size())
 		NvFlexSetDynamicTriangles(g_solver, g_buffers->triangles.buffer, g_buffers->triangleNormals.buffer, g_buffers->triangles.size() / 3);
+	}
 
-	// springs
 	if (g_buffers->springIndices.size())
 	{
 		assert((g_buffers->springIndices.size() & 1) == 0);
@@ -630,7 +551,6 @@ void FlexSystem::postInitScene()
 		NvFlexSetSprings(g_solver, g_buffers->springIndices.buffer, g_buffers->springLengths.buffer, g_buffers->springStiffness.buffer, g_buffers->springLengths.size());
 	}
 
-	// inflatables
 	if (g_buffers->inflatableTriOffsets.size())
 	{
 		NvFlexSetInflatables(g_solver, g_buffers->inflatableTriOffsets.buffer, g_buffers->inflatableTriCounts.buffer, g_buffers->inflatableVolumes.buffer, g_buffers->inflatablePressures.buffer, g_buffers->inflatableCoefficients.buffer, g_buffers->inflatableTriOffsets.size());
@@ -639,23 +559,314 @@ void FlexSystem::postInitScene()
 	setShapes();
 
 	NvFlexSetParams(g_solver, &g_params);
-
 	NvFlexUpdateSolver(g_solver, g_dt, g_numSubsteps, g_profile);
 
-	// ###################################################################################
-
-	// Forcefield
-	// free previous callback, todo: destruction phase for tests
-	if (callback)
+	if (callback != nullptr)
+	{
 		NvFlexExtDestroyForceFieldCallback(callback);
+	}
 
-	// create new callback
 	callback = NvFlexExtCreateForceFieldCallback(g_solver);
+}
+
+void FlexSystem::updateParams(const OP_Inputs* inputs)
+{
+	double gravity[3];
+	double wind[3];
+
+	g_params.maxSpeed = (float)inputs->getParDouble("Maxspeed");
+	g_numSubsteps = inputs->getParInt("Numsubsteps");
+	g_params.numIterations = inputs->getParInt("Numiterations");
+
+	g_dt = (float) 1.0 / inputs->getParDouble("Fps");
+	g_params.maxSpeed = 0.5f * g_params.radius * g_numSubsteps / g_dt;
+
+	inputs->getParDouble3("Gravity", gravity[0], gravity[1], gravity[2]);
+	g_params.gravity[0] = (float)gravity[0];
+	g_params.gravity[1] = (float)gravity[1];
+	g_params.gravity[2] = (float)gravity[2];
+
+	inputs->getParDouble3("Wind", wind[0], wind[1], wind[2]);
+	g_params.wind[0] = (float)wind[0];
+	g_params.wind[1] = (float)wind[1];
+	g_params.wind[2] = (float)wind[2];
+
+	g_params.drag = (float)inputs->getParDouble("Dragcloth");
+	g_params.lift = (float)inputs->getParDouble("Lift");
+	g_params.dynamicFriction = (float)inputs->getParDouble("Dynamicfriction");
+	g_params.restitution = (float)inputs->getParDouble("Restitution");
+	g_params.adhesion = (float)inputs->getParDouble("Adhesion");
+	g_params.dissipation = (float)inputs->getParDouble("Dissipation");
+	g_params.cohesion = (float)inputs->getParDouble("Cohesion");
+	g_params.surfaceTension = (float)inputs->getParDouble("Surfacetension");
+	g_params.viscosity = (float)inputs->getParDouble("Viscosity");
+	g_params.vorticityConfinement = (float)inputs->getParDouble("Vorticityconfinement");
+	g_params.damping = (float)inputs->getParDouble("Damping");
+	g_params.radius = (float)inputs->getParDouble("Radius");
+	maxParticles = inputs->getParInt("Maxparticles");
+	g_maxDiffuseParticles = inputs->getParInt("Maxdiffuseparticles");
+}
+
+void FlexSystem::updateTriangleMesh(const OP_Inputs* inputs)
+{
+	const OP_SOPInput* sopInput = inputs->getParSOP("Trianglespolysop");
+
+	if (deformingMesh && sopInput && sopInput->getNumPrimitives() > 0 &&
+		g_triangleCollisionMesh->GetNumVertices() == sopInput->getNumPoints())
+	{
+
+		Point3 minExt(FLT_MAX);
+		Point3 maxExt(-FLT_MAX);
+
+		for (int i = 0; i < sopInput->getNumPoints(); i++)
+		{
+			Position curPos = sopInput->getPointPositions()[i];
+			const Point3& a = Point3(curPos.x, curPos.y, curPos.z);
+
+			g_triangleCollisionMesh->m_positions[i] = Vec4(curPos.x, curPos.y, curPos.z, 0.0);
+
+			minExt = Min(a, minExt);
+			maxExt = Max(a, maxExt);
+		}
+
+		g_triangleCollisionMesh->minExtents = Vector3(minExt);
+		g_triangleCollisionMesh->maxExtents = Vector3(maxExt);
+		UpdateTriangleMesh(g_triangleCollisionMesh, triangleCollisionMeshId);
+	}
+}
+
+void FlexSystem::initTriangleMesh(const OP_Inputs* inputs) {
+	const OP_SOPInput* sopInput = inputs->getParSOP("Trianglespolysop");
+
+	if (sopInput && (sopInput->getNumPrimitives() > 0))
+	{
+		if (g_triangleCollisionMesh) 
+		{
+			delete g_triangleCollisionMesh;
+		}
+
+		g_triangleCollisionMesh = new VMesh();
+		deformingMesh = inputs->getParInt("Deformingmesh");
+
+		Point3 minExt(FLT_MAX);
+		Point3 maxExt(-FLT_MAX);
+
+		for (int i = 0; i < sopInput->getNumPoints(); i++)
+		{
+			Position curPos = sopInput->getPointPositions()[i];
+			const Point3& a = Point3(curPos.x, curPos.y, curPos.z);
+
+			g_triangleCollisionMesh->m_positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 0.0));
+
+			minExt = Min(a, minExt);
+			maxExt = Max(a, maxExt);
+		}
+
+		g_triangleCollisionMesh->minExtents = Vector3(minExt);
+		g_triangleCollisionMesh->maxExtents = Vector3(maxExt);
+
+		for (int i = 0; i < sopInput->getNumPrimitives(); i++)
+		{
+			SOP_PrimitiveInfo curPrim = sopInput->getPrimitive(i);
+			g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[2]);
+			g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[1]);
+			g_triangleCollisionMesh->m_indices.push_back(curPrim.pointIndices[0]);
+		}
+
+		double meshTrans[3];
+		inputs->getParDouble3("Meshtranslation", meshTrans[0], meshTrans[1], meshTrans[2]);
+
+		double meshRot[3];
+		inputs->getParDouble3("Meshrotation", meshRot[0], meshRot[1], meshRot[2]);
+
+		curMeshTrans = Vec3((float)meshTrans[0], (float)meshTrans[1], (float)meshTrans[2]);
+
+		Vec3 rot = Vec3((float)meshRot[0], (float)meshRot[1], (float)meshRot[2]);
+		Quat qx = QuatFromAxisAngle(Vec3(1, 0, 0), DegToRad(rot.x));
+		Quat qy = QuatFromAxisAngle(Vec3(0, 1, 0), DegToRad(rot.y));
+		Quat qz = QuatFromAxisAngle(Vec3(0, 0, 1), DegToRad(rot.z));
+
+		curMeshRot = qz * qy * qx;
+		previousMeshTrans = curMeshTrans;
+		previousMeshRot = curMeshRot;
+	}
+}
+
+void FlexSystem::initClothMesh(const OP_Inputs* inputs) {
+	const OP_SOPInput* sopInput = inputs->getParSOP("Flexcloth0");
+
+	if (sopInput && sopInput->getNumPrimitives() > 0)
+	{
+		std::vector<Vec4> m_positions;
+		std::vector<int> m_indices;
+		const Vector* norms = nullptr;
+		const TexCoord* textures = nullptr;
+		int32_t numTextures = 0;
+
+		if (clothMesh0) 
+		{
+			delete clothMesh0;
+		}
+
+		if (sopInput->hasNormals()) 
+		{
+			norms = sopInput->getNormals()->normals;
+		}
+
+		if (sopInput->getTextures()->numTextureLayers)
+		{
+			textures = sopInput->getTextures()->textures;
+			numTextures = sopInput->getTextures()->numTextureLayers;
+		}
+
+		for (int i = 0; i < sopInput->getNumPoints(); i++) 
+		{
+			Position curPos = sopInput->getPointPositions()[i];
+
+			m_positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 0.0));
+
+			g_buffers->positions.push_back(Vec4(curPos.x, curPos.y, curPos.z, 1.0f));
+			g_buffers->velocities.push_back(Vec3(0.0f, 0.0f, 0.0f));
+			g_buffers->phases.push_back(NvFlexMakePhase(0, eNvFlexPhaseSelfCollide | eNvFlexPhaseSelfCollideFilter));
+			if (norms) g_buffers->normals.push_back(Vec4(norms[i].x, norms[i].y, norms[i].z, 0.0f));
+			if (textures) g_buffers->uvs.push_back(Vec3(textures[i].u, textures[i].v, textures[i].w));
+		}
+
+		int baseIndex = 0;
+
+		for (int i = 0; i < sopInput->getNumPrimitives(); i++)
+		{
+			SOP_PrimitiveInfo curPrim = sopInput->getPrimitive(i);
+			m_indices.push_back(curPrim.pointIndices[2]);
+			m_indices.push_back(curPrim.pointIndices[1]);
+			m_indices.push_back(curPrim.pointIndices[0]);
+		}
+
+		int triOffset = g_buffers->triangles.size();
+		int triCount = m_indices.size() / 3;
+
+		g_buffers->triangles.assign((int*)&m_indices[0], m_indices.size());
+
+		float stretchStiffness = (float)inputs->getParDouble("Strechcloth");
+		float bendStiffness = (float)inputs->getParDouble("Bendcloth");
+
+		clothMesh0 = new ClothMesh(&m_positions[0], m_positions.size(), &m_indices[0], m_indices.size(), stretchStiffness, bendStiffness, true);
+
+		const int numSprings = int(clothMesh0->mConstraintCoefficients.size());
+
+		g_buffers->springIndices.resize(numSprings * 2);
+		g_buffers->springLengths.resize(numSprings);
+		g_buffers->springStiffness.resize(numSprings);
+
+		for (int i = 0; i < numSprings; ++i)
+		{
+			g_buffers->springIndices[i * 2 + 0] = clothMesh0->mConstraintIndices[i * 2 + 0];
+			g_buffers->springIndices[i * 2 + 1] = clothMesh0->mConstraintIndices[i * 2 + 1];
+			g_buffers->springLengths[i] = clothMesh0->mConstraintRestLengths[i];
+			g_buffers->springStiffness[i] = clothMesh0->mConstraintCoefficients[i];
+		}
+
+		float pressure = inputs->getParDouble("Pressure");
+
+		if (pressure > 0.0f)
+		{
+			g_buffers->inflatableTriOffsets.push_back(triOffset / 3);
+			g_buffers->inflatableTriCounts.push_back(triCount);
+			g_buffers->inflatablePressures.push_back(pressure);
+			g_buffers->inflatableVolumes.push_back(clothMesh0->mRestVolume);
+			g_buffers->inflatableCoefficients.push_back(clothMesh0->mConstraintScale);
+		}
+	}
+}
+
+void FlexSystem::updatePlanes(const OP_Inputs* inputs)
+{
+	const OP_CHOPInput* colPlanesInput = inputs->getParCHOP("Colplaneschop");
+
+	if (colPlanesInput)
+	{
+		if (colPlanesInput->numChannels == 4)
+		{
+			int nPlanes = colPlanesInput->numSamples;
+			g_params.numPlanes = nPlanes;
+
+			for (int i = 0; i < nPlanes; i++)
+			{
+				(Vec4&)g_params.planes[i] = Vec4(colPlanesInput->getChannelData(0)[i],
+					colPlanesInput->getChannelData(1)[i],
+					colPlanesInput->getChannelData(2)[i],
+					colPlanesInput->getChannelData(3)[i]);
+			}
+		}
+	}
+}
+
+void FlexSystem::updateSpheresCols(const OP_Inputs* inputs)
+{
+	const OP_CHOPInput* spheresInput = inputs->getParCHOP("Colsphereschop");
+
+	if (spheresInput && (spheresInput->numChannels == 4))
+	{
+		for (int i = 0; i < spheresInput->numSamples; i++)
+		{
+			Vec3 spherePos = Vec3(spheresInput->getChannelData(0)[i],
+				spheresInput->getChannelData(1)[i],
+				spheresInput->getChannelData(2)[i]);
+
+			float sphereRadius = spheresInput->getChannelData(3)[i];
+			AddSphere(sphereRadius, spherePos, Quat());
+		}
+	}
+}
+
+void FlexSystem::updateBoxesCols(const OP_Inputs* inputs)
+{
+	const OP_CHOPInput* boxesInput = inputs->getParCHOP("Colboxeschop");
+
+	if (boxesInput && boxesInput->numChannels == 9)
+	{
+		for (int i = 0; i < boxesInput->numSamples; i++)
+		{
+			Vec3 boxPos = Vec3(boxesInput->getChannelData(0)[i],
+				boxesInput->getChannelData(1)[i],
+				boxesInput->getChannelData(2)[i]);
+
+			Vec3 boxSize = Vec3(boxesInput->getChannelData(3)[i],
+				boxesInput->getChannelData(4)[i],
+				boxesInput->getChannelData(5)[i]);
+
+			Vec3 boxRot = Vec3(boxesInput->getChannelData(6)[i],
+				boxesInput->getChannelData(7)[i],
+				boxesInput->getChannelData(8)[i]);
+
+			Quat qx = QuatFromAxisAngle(Vec3(1, 0, 0), DegToRad(boxRot.x));
+			Quat qy = QuatFromAxisAngle(Vec3(0, 1, 0), DegToRad(boxRot.y));
+			Quat qz = QuatFromAxisAngle(Vec3(0, 0, 1), DegToRad(boxRot.z));
+
+			AddBox(boxSize, boxPos, qz * qy * qx);
+		}
+	}
+}
+
+void FlexSystem::updateCloths(const OP_Inputs* inputs)
+{
+	const OP_SOPInput* sopInput = inputs->getParSOP("Anchorscloth0");
+
+	// update anchor positions
+	if (sopInput && (sopInput->getNumPoints() > 0))
+	{
+		const SOP_CustomAttribData* idx = sopInput->getCustomAttribute("idx");
+
+		for (int i = 0; i < sopInput->getNumPoints(); i++)
+		{
+			Position curPos = sopInput->getPointPositions()[i];
+			g_buffers->positions[(int)idx->floatData[i]] = Vec4(curPos.x, curPos.y, curPos.z, 0.0f);
+		}
+	}
 }
 
 void FlexSystem::AddBox(Vec3 halfEdge, Vec3 center, Quat quat, bool dynamic)
 {
-	// transform
 	g_buffers->shapePositions.push_back(Vec4(center.x, center.y, center.z, 0.0f));
 	g_buffers->shapeRotations.push_back(quat);
 
@@ -689,8 +900,10 @@ void FlexSystem::AddSphere(float radius, Vec3 position, Quat rotation)
 
 NvFlexTriangleMeshId FlexSystem::CreateTriangleMesh(VMesh* m)
 {
-	/*if (!m)
-		return 0;*/
+	if (m == nullptr)
+	{
+		return 0;
+	}
 
 	Vec3 lower, upper;
 
@@ -700,8 +913,8 @@ NvFlexTriangleMeshId FlexSystem::CreateTriangleMesh(VMesh* m)
 	NvFlexVector<Vec4> positions(g_flexLib);
 	NvFlexVector<int> indices(g_flexLib);
 
-	positions.assign((Vec4*)&m->m_positions[0], m->m_positions.size());
-	indices.assign((int*)&m->m_indices[0], m->m_indices.size());
+	positions.assign((Vec4*)&m->m_positions[0], (int)m->m_positions.size());
+	indices.assign((int*)&m->m_indices[0], (int)m->m_indices.size());
 
 	positions.unmap();
 	indices.unmap();
@@ -714,6 +927,11 @@ NvFlexTriangleMeshId FlexSystem::CreateTriangleMesh(VMesh* m)
 
 void FlexSystem::UpdateTriangleMesh(VMesh* m, NvFlexTriangleMeshId flexMeshId)
 {
+	if (m == nullptr)
+	{
+		return;
+	}
+
 	Vec3 lower, upper;
 
 	lower = m->minExtents;
@@ -722,8 +940,8 @@ void FlexSystem::UpdateTriangleMesh(VMesh* m, NvFlexTriangleMeshId flexMeshId)
 	NvFlexVector<Vec4> positions(g_flexLib);
 	NvFlexVector<int> indices(g_flexLib);
 
-	positions.assign((Vec4*)&m->m_positions[0], m->m_positions.size());
-	indices.assign((int*)&m->m_indices[0], m->m_indices.size());
+	positions.assign((Vec4*)&m->m_positions[0], (int)m->m_positions.size());
+	indices.assign((int*)&m->m_indices[0], (int)m->m_indices.size());
 
 	positions.unmap();
 	indices.unmap();
@@ -733,9 +951,6 @@ void FlexSystem::UpdateTriangleMesh(VMesh* m, NvFlexTriangleMeshId flexMeshId)
 
 void FlexSystem::AddTriangleMesh(NvFlexTriangleMeshId mesh, Vec3 translation, Quat rotation, Vec3 prevTrans, Quat prevRot, Vec3 scale)
 {
-	//Vec3 lower, upper;
-	//NvFlexGetTriangleMeshBounds(g_flexLib, mesh, lower, upper);
-
 	NvFlexCollisionGeometry geo;
 	geo.triMesh.mesh = mesh;
 	geo.triMesh.scale[0] = scale.x;
@@ -755,7 +970,7 @@ void FlexSystem::GetParticleBounds(Vec3& lower, Vec3& upper)
 	lower = Vec3(FLT_MAX);
 	upper = Vec3(-FLT_MAX);
 
-	for (size_t i=0; i < g_buffers->positions.size(); ++i)
+	for (int i=0; i < g_buffers->positions.size(); ++i)
 	{
 		lower = Min(Vec3(g_buffers->positions[i]), lower);
 		upper = Max(Vec3(g_buffers->positions[i]), upper);
@@ -764,15 +979,13 @@ void FlexSystem::GetParticleBounds(Vec3& lower, Vec3& upper)
 
 void FlexSystem::CreateParticleGrid(Vec3 lower, int dimx, int dimy, int dimz, float radius, Vec3 velocity, float invMass, bool rigid, float rigidStiffness, int phase, float jitter=0.005f)
 {
-
-	for (int x=0; x < dimx; ++x)
+	for (int x = 0; x < dimx; ++x) 
 	{
-		for (int y=0; y < dimy; ++y)
+		for (int y = 0; y < dimy; ++y) 
 		{
-			for (int z=0; z < dimz; ++z)
+			for (int z = 0; z < dimz; ++z)
 			{
-
-				Vec3 position = lower + Vec3(float(x), float(y), float(z))*radius + RandomUnitVector()*jitter;
+				Vec3 position = lower + Vec3(float(x), float(y), float(z)) * radius + RandomUnitVector() * jitter;
 
 				g_buffers->positions.push_back(Vec4(position.x, position.y, position.z, invMass));
 				g_buffers->velocities.push_back(velocity);
@@ -780,32 +993,28 @@ void FlexSystem::CreateParticleGrid(Vec3 lower, int dimx, int dimy, int dimz, fl
 			}
 		}
 	}
-
-
 }
 
 void FlexSystem::CreateCenteredParticleGrid(Point3 center, Vec3 rotation, Point3 size, float restDistance, Vec3 velocity, float invMass, bool rigid, int phase, float jitter)
 {
+	long dx = int(ceilf(size.x / restDistance));
+	long dy = int(ceilf(size.y / restDistance));
+	long dz = int(ceilf(size.z / restDistance));
 
-	int dx = int(ceilf(size.x / restDistance));
-	int dy = int(ceilf(size.y / restDistance));
-	int dz = int(ceilf(size.z / restDistance));
-
-	for (int x=0; x < dx; ++x)
+	for (int x = 0; x < dx; ++x)
 	{
-		for (int y=0; y < dy; ++y)
+		for (int y = 0; y < dy; ++y) 
 		{
-			for (int z=0; z < dz; ++z)
+			for (int z = 0; z < dz; ++z)
 			{
-				Point3 position = restDistance*Point3(float(x) - 0.5*(dx-1), float(y) - 0.5*(dy-1), float(z) - 0.5*(dz-1)) + RandomUnitVector()*jitter;
-				position = TranslationMatrix(center) * TransformMatrix(Rotation(rotation.y, rotation.z, rotation.x), Point3(0.f))*position;
+				Point3 position = restDistance * Point3((float)x - 0.5 * ((float)dx - 1.0f), (float)y - 0.5 * ((float)dy - 1.0f), (float)z - 0.5 * ((float)dz - 1.0f)) + RandomUnitVector() * jitter;
+				position = TranslationMatrix(center) * TransformMatrix(Rotation(rotation.y, rotation.z, rotation.x), Point3(0.f)) * position;
 
-				if(cursor<maxParticles-1) {
-
+				if (cursor < (maxParticles - 1))
+				{
 					g_buffers->positions.push_back(Vec4(position.x, position.y, position.z, invMass));
 					g_buffers->velocities.push_back(velocity);
 					g_buffers->phases.push_back(phase);
-
 					cursor++;
 				}
 			}
@@ -827,9 +1036,9 @@ void FlexSystem::CreateSpringGrid(Vec3 lower, int dx, int dy, int dz, float radi
 {
 	int baseIndex = int(g_buffers->positions.size());
 
-	for (int z = 0; z < dz; ++z)
+	for (int z = 0; z < dz; ++z) 
 	{
-		for (int y = 0; y < dy; ++y)
+		for (int y = 0; y < dy; ++y) 
 		{
 			for (int x = 0; x < dx; ++x)
 			{
@@ -868,7 +1077,6 @@ void FlexSystem::CreateSpringGrid(Vec3 lower, int dx, int dy, int dz, float radi
 				int index1 = y * dx + x - 1;
 				CreateSpring(baseIndex + index0, baseIndex + index1, stretchStiffness);
 			}
-
 			if (x > 1)
 			{
 				int index2 = y * dx + x - 2;
@@ -911,20 +1119,6 @@ void FlexSystem::CreateSpringGrid(Vec3 lower, int dx, int dy, int dz, float radi
 	}
 }
 
-void FlexSystem::AddSDF(NvFlexDistanceFieldId sdf, Vec3 translation, Quat rotation, float width)
-{
-	NvFlexCollisionGeometry geo;
-	geo.sdf.field = sdf;
-	geo.sdf.scale = width;
-
-	g_buffers->shapePositions.push_back(Vec4(translation, 0.0f));
-	g_buffers->shapeRotations.push_back(Quat(rotation));
-	g_buffers->shapePrevPositions.push_back(Vec4(translation, 0.0f));
-	g_buffers->shapePrevRotations.push_back(Quat(rotation));
-	g_buffers->shapeGeometry.push_back((NvFlexCollisionGeometry&)geo);
-	g_buffers->shapeFlags.push_back(NvFlexMakeShapeFlags(eNvFlexShapeSDF, false));
-}
-
 void FlexSystem::ClearShapes()
 {
 	g_buffers->shapeGeometry.resize(0);
@@ -937,189 +1131,85 @@ void FlexSystem::ClearShapes()
 
 void FlexSystem::setShapes(){
 
-	if(g_buffers->shapeFlags.size()){
-	NvFlexSetShapes(
-				g_solver,
-				g_buffers->shapeGeometry.buffer,
-				g_buffers->shapePositions.buffer,
-				g_buffers->shapeRotations.buffer,
-				g_buffers->shapePrevPositions.buffer,
-				g_buffers->shapePrevRotations.buffer,
-				g_buffers->shapeFlags.buffer,
-				g_buffers->shapeFlags.size());
-		}
-}
-
-void FlexSystem::emission(){
-
-	size_t e=0;
-
-	for (; e < nEmitter; ++e)
+	if(g_buffers->shapeFlags.size())
 	{
-		if (!g_rectEmitters[e].mEnabled)
-			continue;
-
-		Vec3 emitterRot = g_rectEmitters[e].mRot;
-		Point3 emitterSize = g_rectEmitters[e].mSize;
-		Point3 emitterPos = g_rectEmitters[e].mPos;
-
-		float r = g_params.fluidRestDistance;
-		int phase = NvFlexMakePhase(0, eNvFlexPhaseSelfCollide | eNvFlexPhaseFluid);
-
-		float numSlices = (g_rectEmitters[e].mSpeed / r)*g_dt;
-
-		// whole number to emit
-		int n = int(numSlices + g_rectEmitters[e].mLeftOver);
-				
-		if (n)
-			g_rectEmitters[e].mLeftOver = (numSlices + g_rectEmitters[e].mLeftOver)-n;
-		else
-			g_rectEmitters[e].mLeftOver += numSlices;
-
-		//int circle = 1;
-
-		int disc = g_rectEmitters[e].mDisc;
-
-		int dy = 0;
-
-				
-		int dx = int(ceilf(emitterSize.x / g_params.fluidRestDistance));
-		if(disc)
-			dy = int(ceilf(emitterSize.x / g_params.fluidRestDistance));
-		else
-			dy = int(ceilf(emitterSize.y / g_params.fluidRestDistance));
-		Mat44	tMat = TransformMatrix(Rotation(emitterRot.y, emitterRot.z, emitterRot.x), emitterPos);
-
-
-		for (int z=0; z < n; ++z)
-				{
-			for (int x=0; x < dx; ++x)
-			{
-				for (int y=0; y < dy; ++y)
-				{
-						
-					Point3 position = g_params.fluidRestDistance*Point3(float(x) - 0.5*(dx-1), float(y) - 0.5*(dy-1), float(z)) + RandomUnitVector()*g_params.fluidRestDistance*0.01f;
-
-					int keep = 1;
-
-					if(disc){
-						if(position.x*position.x + position.y*position.y>0.25*emitterSize.x*emitterSize.x)
-							keep=0;
-					}
-
-					if(g_rectEmitters[e].mNoise){
-						Point3 scaledP = position*g_rectEmitters[e].mNoiseFreq + Point3(0,0,g_rectEmitters[e].mNoiseOffset);
-						const float kNoise = Perlin3D(scaledP.x, scaledP.y, scaledP.z, 1, 0.25f);
-
-						if(kNoise<g_rectEmitters[e].mNoiseThreshold)
-							keep=0;
-
-					}
-
-					if(keep) {
-
-						position = tMat*position;
-
-						Vec3 vel = Vec3(0,0,g_rectEmitters[e].mSpeed);
-						vel = tMat*vel;
-
-						g_buffers->positions[cursor] = Vec4(Vec3(position), 1.0f);
-						g_buffers->velocities[cursor] = vel;
-						g_buffers->phases[cursor] = phase;
-
-						if(g_buffers->activeIndices.size()<maxParticles)
-							g_buffers->activeIndices.push_back(cursor);
-
-						if(cursor<maxParticles-1)
-							cursor++;
-						else
-							cursor = 0;
-
-						
-					}//end dist
-				}
-			}
-		}
-
+		NvFlexSetShapes(
+			g_solver,
+			g_buffers->shapeGeometry.buffer,
+			g_buffers->shapePositions.buffer,
+			g_buffers->shapeRotations.buffer,
+			g_buffers->shapePrevPositions.buffer,
+			g_buffers->shapePrevRotations.buffer,
+			g_buffers->shapeFlags.buffer,
+			g_buffers->shapeFlags.size());
 	}
 }
 
-void FlexSystem::update() {
+void FlexSystem::update()
+{
+	activeParticles = NvFlexGetActiveCount(g_solver);
 
-		activeParticles = NvFlexGetActiveCount(g_solver);
-		
-		time1 = GetSeconds();
+	g_buffers->UnmapBuffers();
 
-		emission();
+	NvFlexCopyDesc copyDesc;
+	copyDesc.dstOffset = 0;
+	copyDesc.srcOffset = 0;
 
-		time2 = GetSeconds();
+	// Active particles
+	if (g_buffers->activeIndices.size())
+	{
+		copyDesc.elementCount = g_buffers->activeIndices.size();
+		NvFlexSetActive(g_solver, g_buffers->activeIndices.buffer, &copyDesc);
+		NvFlexSetActiveCount(g_solver, g_buffers->activeIndices.size());
+	}
 
-		g_buffers->UnmapBuffers();
+	// Particles
+	if (g_buffers->positions.size())
+	{
+		copyDesc.elementCount = g_buffers->positions.size();
+		NvFlexSetParticles(g_solver, g_buffers->positions.buffer, &copyDesc);
+		NvFlexSetVelocities(g_solver, g_buffers->velocities.buffer, &copyDesc);
+		NvFlexSetPhases(g_solver, g_buffers->phases.buffer, &copyDesc);
+		NvFlexSetRestParticles(g_solver, g_buffers->restPositions.buffer, &copyDesc);
+	}
 
-		NvFlexCopyDesc copyDesc;
-		copyDesc.dstOffset = 0;
-		copyDesc.srcOffset = 0;
+	// Dynamic triangles
+	if (g_buffers->triangles.size())
+	{
+		NvFlexSetDynamicTriangles(g_solver, g_buffers->triangles.buffer, g_buffers->triangleNormals.buffer, g_buffers->triangles.size() / 3);
+	}
 
-		if (g_buffers->activeIndices.size()) {
+	// Inflatables
+	if (g_buffers->inflatableTriOffsets.size())
+	{
+		NvFlexSetInflatables(g_solver, g_buffers->inflatableTriOffsets.buffer, g_buffers->inflatableTriCounts.buffer, g_buffers->inflatableVolumes.buffer, g_buffers->inflatablePressures.buffer, g_buffers->inflatableCoefficients.buffer, g_buffers->inflatableTriOffsets.size());
+	}
 
-			copyDesc.elementCount = g_buffers->activeIndices.size();
+	setShapes();
 
-			NvFlexSetActive(g_solver, g_buffers->activeIndices.buffer, &copyDesc);
-			NvFlexSetActiveCount(g_solver, g_buffers->activeIndices.size());
-		}
+	NvFlexSetParams(g_solver, &g_params);
 
-		if (g_buffers->positions.size()) {
+	NvFlexUpdateSolver(g_solver, g_dt, g_numSubsteps, g_profile);
 
-			copyDesc.elementCount = g_buffers->positions.size();
+	if (g_buffers->positions.size())
+	{
+		copyDesc.elementCount = g_buffers->positions.size();
+		NvFlexGetParticles(g_solver, g_buffers->positions.buffer, &copyDesc);
+		NvFlexGetParticles(g_solver, g_buffers->positionsGpu.buffer, &copyDesc);
+		NvFlexGetVelocities(g_solver, g_buffers->velocities.buffer, &copyDesc);
+		NvFlexGetNormals(g_solver, g_buffers->normalsGpu.buffer, NULL);
+	}
 
-			NvFlexSetParticles(g_solver, g_buffers->positions.buffer, &copyDesc);
-			NvFlexSetVelocities(g_solver, g_buffers->velocities.buffer, &copyDesc);
-			NvFlexSetPhases(g_solver, g_buffers->phases.buffer, &copyDesc);
+	if (g_buffers->triangles.size()) 
+	{
+		NvFlexGetDynamicTriangles(g_solver, g_buffers->trianglesGpu.buffer, g_buffers->triangleNormalsGpu.buffer, g_buffers->triangles.size() / 3);
+	}
 
-			NvFlexSetRestParticles(g_solver, g_buffers->restPositions.buffer, &copyDesc);
+	activeParticles = NvFlexGetActiveCount(g_solver);
 
-		}
-
-		// dynamic triangles
-		if (g_buffers->triangles.size())
-		{
-			NvFlexSetDynamicTriangles(g_solver, g_buffers->triangles.buffer, g_buffers->triangleNormals.buffer, g_buffers->triangles.size() / 3);
-		}
-
-		// inflatables
-		if (g_buffers->inflatableTriOffsets.size())
-		{
-			NvFlexSetInflatables(g_solver, g_buffers->inflatableTriOffsets.buffer, g_buffers->inflatableTriCounts.buffer, g_buffers->inflatableVolumes.buffer, g_buffers->inflatablePressures.buffer, g_buffers->inflatableCoefficients.buffer, g_buffers->inflatableTriOffsets.size());
-		}
-
-		// Forcefield
-		if (/*forcefield != NULL && */callback != nullptr && nFields > 0)
-			NvFlexExtSetForceFields(callback, &forcefield, nFields);
-
-
-		setShapes();
-
-		NvFlexSetParams(g_solver, &g_params);
-
-		NvFlexUpdateSolver(g_solver, g_dt, g_numSubsteps, g_profile);
-
-		if(g_buffers->positions.size()){
-
-			copyDesc.elementCount = g_buffers->positions.size();
-
-			NvFlexGetParticles(g_solver, g_buffers->positions.buffer, &copyDesc);
-			NvFlexGetParticles(g_solver, g_buffers->positionsGpu.buffer, &copyDesc);
-
-			NvFlexGetSmoothParticles(g_solver, g_buffers->smoothPositions.buffer, &copyDesc);
-			NvFlexGetAnisotropy(g_solver, g_buffers->anisotropy1.buffer, g_buffers->anisotropy2.buffer, g_buffers->anisotropy3.buffer, &copyDesc);
-
-			NvFlexGetVelocities(g_solver, g_buffers->velocities.buffer, &copyDesc);
-			NvFlexGetNormals(g_solver, g_buffers->normalsGpu.buffer, NULL);
-		}
-
-		if (g_buffers->triangles.size()){
-			NvFlexGetDynamicTriangles(g_solver, g_buffers->trianglesGpu.buffer, g_buffers->triangleNormalsGpu.buffer, g_buffers->triangles.size() / 3);
-		}
-
-		activeParticles = NvFlexGetActiveCount(g_solver);
+	// Forcefields
+	if ((forcefieldRadial != nullptr) && (callback != nullptr) && (nFields > 0))
+	{
+		NvFlexExtSetForceFields(callback, forcefieldRadial, nFields);
+	}
 }
